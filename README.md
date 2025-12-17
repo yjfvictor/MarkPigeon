@@ -6,9 +6,10 @@
   
   <h3>Turn Markdown into Beautiful, Shareable HTML.</h3>
 
+  [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)](https://github.com/steven-jianhao-li/MarkPigeon/releases)
+  [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+  [![Downloads](https://img.shields.io/github/downloads/steven-jianhao-li/MarkPigeon/total)](https://github.com/steven-jianhao-li/MarkPigeon/releases)
   [![Build Status](https://img.shields.io/github/actions/workflow/status/steven-jianhao-li/MarkPigeon/ci.yml)](https://github.com/steven-jianhao-li/MarkPigeon/actions)
-  [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-  [![Python](https://img.shields.io/badge/python-3.10+-yellow.svg)](https://www.python.org/)
 </div>
 
 ---
@@ -19,7 +20,8 @@
 
 ## ✨ Key Features
 
-* **🎨 Typora Theme Compatible**: Use any `.css` theme from Typora directly.
+* **🚀 Out-of-the-Box**: **No Python required!** Just download the executable, double-click, and start converting.
+* **🎨 Typora Synergy**: Seamlessly reuse your favorite Typora CSS themes. If it looks good in Typora, it looks good in MarkPigeon.
 * **📦 Smart Asset Isolation**: Automatically extracts local images into a dedicated `assets_<filename>` folder and rewrites paths. No more broken images when sharing!
 * **🤐 One-Click Zipping**: Batch export to individual Zip files for easy email sharing.
 * **🌍 Multi-language**: Supports English and Simplified Chinese.
@@ -137,3 +139,16 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+## 📈 Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=steven-jianhao-li/MarkPigeon&type=Date)](https://star-history.com/#steven-jianhao-li/MarkPigeon&Date)
+
+## 👥 Contributors
+
+Thanks to all the people who contribute to this project!
+
+<a href="https://github.com/steven-jianhao-li/MarkPigeon/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=steven-jianhao-li/MarkPigeon" />
+</a>
+

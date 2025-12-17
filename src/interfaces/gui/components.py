@@ -5,64 +5,73 @@ Reusable UI components for the GUI interface.
 """
 
 from pathlib import Path
-from typing import List, Optional, Callable
 
-from PySide6.QtCore import Qt, Signal, QMimeData
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QListWidget, QListWidgetItem, QFrame, QProgressBar,
-    QComboBox, QFileDialog, QMessageBox, QGroupBox, QRadioButton,
-    QButtonGroup
+    QButtonGroup,
+    QComboBox,
+    QFileDialog,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QProgressBar,
+    QPushButton,
+    QRadioButton,
+    QVBoxLayout,
+    QWidget,
 )
 
 
 class DropZone(QFrame):
     """
     A drop zone widget for dragging and dropping files.
-    
+
     Signals:
         files_dropped: Emitted when files are dropped, with list of file paths.
     """
-    
+
     files_dropped = Signal(list)
-    
-    def __init__(self, parent: Optional[QWidget] = None):
+
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setAcceptDrops(True)
         self._setup_ui()
-    
+
     def _setup_ui(self):
         """Set up the UI."""
         self.setObjectName("dropZone")
         self.setMinimumHeight(150)
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setFrameShadow(QFrame.Shadow.Sunken)
-        
+
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
+
         # Icon/hint label
         self.hint_label = QLabel("📁")
         self.hint_label.setObjectName("dropZoneIcon")
         self.hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
+
         self.text_label = QLabel("Drop Markdown files here")
         self.text_label.setObjectName("dropZoneText")
         self.text_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
+
         # Browse button
         self.browse_btn = QPushButton("Browse Files")
         self.browse_btn.setObjectName("browseButton")
         self.browse_btn.clicked.connect(self._browse_files)
-        
+
         layout.addWidget(self.hint_label)
         layout.addWidget(self.text_label)
         layout.addSpacing(10)
         layout.addWidget(self.browse_btn)
-        
+
         self._apply_styles()
-    
+
     def _apply_styles(self):
         """Apply styles."""
         self.setStyleSheet("""
@@ -94,56 +103,52 @@ class DropZone(QFrame):
                 background-color: #0b5ed7;
             }
         """)
-    
-    def dragEnterEvent(self, event: QDragEnterEvent):
+
+    def dragEnterEvent(self, event: QDragEnterEvent):  # noqa: N802
         """Handle drag enter."""
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
-            self.setStyleSheet(self.styleSheet().replace(
-                "background-color: #f8f9fa",
-                "background-color: #e3f2fd"
-            ))
-    
-    def dragLeaveEvent(self, event):
+            self.setStyleSheet(
+                self.styleSheet().replace("background-color: #f8f9fa", "background-color: #e3f2fd")
+            )
+
+    def dragLeaveEvent(self, event):  # noqa: N802
         """Handle drag leave."""
         self._apply_styles()
-    
-    def dropEvent(self, event: QDropEvent):
+
+    def dropEvent(self, event: QDropEvent):  # noqa: N802
         """Handle drop event."""
         self._apply_styles()
-        
+
         files = []
         for url in event.mimeData().urls():
             path = Path(url.toLocalFile())
             if path.exists():
-                if path.is_file() and path.suffix.lower() in ('.md', '.markdown'):
+                if path.is_file() and path.suffix.lower() in (".md", ".markdown"):
                     files.append(path)
                 elif path.is_dir():
                     # Collect MD files from directory
-                    files.extend(path.glob('*.md'))
-                    files.extend(path.glob('*.markdown'))
-        
+                    files.extend(path.glob("*.md"))
+                    files.extend(path.glob("*.markdown"))
+
         if files:
             self.files_dropped.emit(files)
-        
+
         event.acceptProposedAction()
-    
+
     def _browse_files(self):
         """Open file browser dialog."""
         files, _ = QFileDialog.getOpenFileNames(
-            self,
-            "Select Markdown Files",
-            "",
-            "Markdown Files (*.md *.markdown);;All Files (*)"
+            self, "Select Markdown Files", "", "Markdown Files (*.md *.markdown);;All Files (*)"
         )
-        
+
         if files:
             self.files_dropped.emit([Path(f) for f in files])
-    
+
     def set_text(self, text: str):
         """Set the hint text."""
         self.text_label.setText(text)
-    
+
     def set_button_text(self, text: str):
         """Set the browse button text."""
         self.browse_btn.setText(text)
@@ -152,49 +157,49 @@ class DropZone(QFrame):
 class FileListWidget(QWidget):
     """
     Widget displaying a list of files to be converted.
-    
+
     Signals:
         file_removed: Emitted when a file is removed, with the file path.
         files_cleared: Emitted when all files are cleared.
     """
-    
+
     file_removed = Signal(Path)
     files_cleared = Signal()
-    
-    def __init__(self, parent: Optional[QWidget] = None):
+
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self._files: List[Path] = []
+        self._files: list[Path] = []
         self._setup_ui()
-    
+
     def _setup_ui(self):
         """Set up the UI."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # Header
         header = QHBoxLayout()
         self.count_label = QLabel("Files (0)")
         self.count_label.setObjectName("fileListHeader")
-        
+
         self.clear_btn = QPushButton("Clear All")
         self.clear_btn.setObjectName("clearButton")
         self.clear_btn.clicked.connect(self._clear_files)
         self.clear_btn.setEnabled(False)
-        
+
         header.addWidget(self.count_label)
         header.addStretch()
         header.addWidget(self.clear_btn)
-        
+
         # List widget
         self.list_widget = QListWidget()
         self.list_widget.setObjectName("fileList")
         self.list_widget.setAlternatingRowColors(True)
-        
+
         layout.addLayout(header)
         layout.addWidget(self.list_widget)
-        
+
         self._apply_styles()
-    
+
     def _apply_styles(self):
         """Apply styles."""
         self.setStyleSheet("""
@@ -226,37 +231,37 @@ class FileListWidget(QWidget):
                 background-color: #f8f9fa;
             }
         """)
-    
-    def add_files(self, files: List[Path]):
+
+    def add_files(self, files: list[Path]):
         """Add files to the list."""
         for file_path in files:
             if file_path not in self._files:
                 self._files.append(file_path)
-                
+
                 item = QListWidgetItem(f"📄 {file_path.name}")
                 item.setToolTip(str(file_path))
                 item.setData(Qt.ItemDataRole.UserRole, file_path)
                 self.list_widget.addItem(item)
-        
+
         self._update_count()
-    
-    def get_files(self) -> List[Path]:
+
+    def get_files(self) -> list[Path]:
         """Get list of files."""
         return self._files.copy()
-    
+
     def _clear_files(self):
         """Clear all files."""
         self._files.clear()
         self.list_widget.clear()
         self._update_count()
         self.files_cleared.emit()
-    
+
     def _update_count(self):
         """Update the file count label."""
         count = len(self._files)
         self.count_label.setText(f"Files ({count})")
         self.clear_btn.setEnabled(count > 0)
-    
+
     def set_header_text(self, text: str):
         """Set the header text template (use {count} for count)."""
         count = len(self._files)
@@ -266,47 +271,47 @@ class FileListWidget(QWidget):
 class ThemeSelector(QWidget):
     """
     Widget for selecting a theme.
-    
+
     Signals:
         theme_changed: Emitted when theme selection changes.
     """
-    
+
     theme_changed = Signal(str)
-    
-    def __init__(self, parent: Optional[QWidget] = None):
+
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._setup_ui()
-    
+
     def _setup_ui(self):
         """Set up the UI."""
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        
+
         self.label = QLabel("Theme:")
         self.combo = QComboBox()
         self.combo.setMinimumWidth(200)
         self.combo.currentTextChanged.connect(self._on_theme_changed)
-        
+
         layout.addWidget(self.label)
         layout.addWidget(self.combo)
         layout.addStretch()
-    
-    def set_themes(self, themes: List[str], no_theme_text: str = "No Theme"):
+
+    def set_themes(self, themes: list[str], no_theme_text: str = "No Theme"):
         """Set available themes."""
         self.combo.clear()
         self.combo.addItem(no_theme_text, None)
         for theme in themes:
             self.combo.addItem(theme, theme)
-    
-    def get_selected_theme(self) -> Optional[str]:
+
+    def get_selected_theme(self) -> str | None:
         """Get the selected theme name."""
         return self.combo.currentData()
-    
+
     def _on_theme_changed(self, text: str):
         """Handle theme change."""
         theme = self.combo.currentData()
         self.theme_changed.emit(theme if theme else "")
-    
+
     def set_label_text(self, text: str):
         """Set the label text."""
         self.label.setText(text)
@@ -315,51 +320,51 @@ class ThemeSelector(QWidget):
 class ExportModeSelector(QGroupBox):
     """
     Widget for selecting export mode.
-    
+
     Signals:
         mode_changed: Emitted when mode changes, with mode string.
     """
-    
+
     mode_changed = Signal(str)
-    
-    def __init__(self, parent: Optional[QWidget] = None):
+
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._setup_ui()
-    
+
     def _setup_ui(self):
         """Set up the UI."""
         self.setTitle("Export Mode")
-        
+
         layout = QVBoxLayout(self)
-        
+
         self.button_group = QButtonGroup(self)
-        
+
         self.mode_default = QRadioButton("HTML + Assets Folder")
         self.mode_default.setChecked(True)
         self.button_group.addButton(self.mode_default, 0)
-        
+
         self.mode_zip = QRadioButton("Individual ZIP per File")
         self.button_group.addButton(self.mode_zip, 1)
-        
+
         self.mode_batch = QRadioButton("Single Batch ZIP")
         self.button_group.addButton(self.mode_batch, 2)
-        
+
         layout.addWidget(self.mode_default)
         layout.addWidget(self.mode_zip)
         layout.addWidget(self.mode_batch)
-        
+
         self.button_group.idClicked.connect(self._on_mode_changed)
-    
+
     def get_mode(self) -> str:
         """Get the selected export mode."""
         checked_id = self.button_group.checkedId()
-        modes = ['default', 'zip', 'batch']
-        return modes[checked_id] if 0 <= checked_id < len(modes) else 'default'
-    
+        modes = ["default", "zip", "batch"]
+        return modes[checked_id] if 0 <= checked_id < len(modes) else "default"
+
     def _on_mode_changed(self, id: int):
         """Handle mode change."""
         self.mode_changed.emit(self.get_mode())
-    
+
     def set_mode_texts(self, default: str, zip_mode: str, batch: str):
         """Set the mode radio button texts."""
         self.mode_default.setText(default)
@@ -369,29 +374,29 @@ class ExportModeSelector(QGroupBox):
 
 class ProgressWidget(QWidget):
     """Widget showing conversion progress."""
-    
-    def __init__(self, parent: Optional[QWidget] = None):
+
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._setup_ui()
-    
+
     def _setup_ui(self):
         """Set up the UI."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        
+
         self.status_label = QLabel("Ready")
         self.status_label.setObjectName("statusLabel")
-        
+
         self.progress_bar = QProgressBar()
         self.progress_bar.setTextVisible(True)
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
-        
+
         layout.addWidget(self.status_label)
         layout.addWidget(self.progress_bar)
-        
+
         self._apply_styles()
-    
+
     def _apply_styles(self):
         """Apply styles."""
         self.setStyleSheet("""
@@ -411,20 +416,20 @@ class ProgressWidget(QWidget):
                 border-radius: 3px;
             }
         """)
-    
+
     def set_progress(self, current: int, total: int, message: str = ""):
         """Set the progress."""
         if total > 0:
             percentage = int((current / total) * 100)
             self.progress_bar.setValue(percentage)
-        
+
         if message:
             self.status_label.setText(message)
-    
+
     def set_status(self, text: str):
         """Set the status text."""
         self.status_label.setText(text)
-    
+
     def reset(self):
         """Reset the progress."""
         self.progress_bar.setValue(0)

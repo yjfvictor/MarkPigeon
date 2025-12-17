@@ -5,6 +5,11 @@
   <img src="assets/icon.png" alt="MarkPigeon Logo" width="120">
   
   <h3>让 Markdown 文档分享变得优雅简单。</h3>
+
+  [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)](https://github.com/steven-jianhao-li/MarkPigeon/releases)
+  [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+  [![Downloads](https://img.shields.io/github/downloads/steven-jianhao-li/MarkPigeon/total)](https://github.com/steven-jianhao-li/MarkPigeon/releases)
+  [![Build Status](https://img.shields.io/github/actions/workflow/status/steven-jianhao-li/MarkPigeon/ci.yml)](https://github.com/steven-jianhao-li/MarkPigeon/actions)
 </div>
 
 ---
@@ -15,7 +20,8 @@
 
 ## ✨ 核心功能
 
-* **🎨 复用 Typora 主题**: 直接把 `.css` 放入 `themes` 文件夹即可使用，完美还原样式。
+* **🚀 开箱即用**: **无需安装 Python！** 下载可执行文件，双击即可使用。
+* **🎨 Typora 完美伴侣**: 直接复用你喜欢的 Typora CSS 主题，无缝迁移体验。
 * **📦 智能资源隔离**: 自动提取文档中的图片，复制到独立的 `assets_<文件名>` 文件夹，并自动修正 HTML 路径。
 * **🤐 一键压缩打包**: 支持将每个文档及其资源单独打包成 Zip，方便微信/邮件发送。
 * **🌍 多语言支持**: 界面支持 简体中文 / English。
@@ -136,3 +142,16 @@ MIT 许可证。详见 [LICENSE](LICENSE)。
 3. 提交更改 (`git commit -m 'Add amazing feature'`)
 4. 推送分支 (`git push origin feature/amazing-feature`)
 5. 发起 Pull Request
+
+## 📈 Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=steven-jianhao-li/MarkPigeon&type=Date)](https://star-history.com/#steven-jianhao-li/MarkPigeon&Date)
+
+## 👥 贡献者
+
+感谢所有为本项目做出贡献的开发者！
+
+<a href="https://github.com/steven-jianhao-li/MarkPigeon/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=steven-jianhao-li/MarkPigeon" />
+</a>
+

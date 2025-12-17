@@ -294,6 +294,10 @@ pytest
 # 检查代码风格 (使用 Ruff)
 ruff check src/
 
+# 自动修复部分错误
+ruff check src/ --fix
+
+
 # 启动 GUI 进行调试
 python src/main.py
 
