@@ -1,0 +1,91 @@
+{
+    "app": {
+        "title": "MarkPigeon",
+        "description": "Markdown to HTML Converter"
+    },
+    "menu": {
+        "file": "File",
+        "edit": "Edit",
+        "view": "View",
+        "help": "Help",
+        "settings": "Settings",
+        "language": "Language",
+        "about": "About",
+        "exit": "Exit"
+    },
+    "main": {
+        "drop_hint": "Drop Markdown files here or click to browse",
+        "browse_files": "Browse Files",
+        "browse_folder": "Browse Folder",
+        "output_dir": "Output Directory",
+        "same_as_input": "Same as input",
+        "choose_output": "Choose...",
+        "theme": "Theme",
+        "no_theme": "No Theme (Default)",
+        "export_mode": "Export Mode",
+        "mode_default": "HTML + Assets Folder",
+        "mode_zip": "Individual ZIP per File",
+        "mode_batch": "Single Batch ZIP",
+        "convert": "Convert",
+        "converting": "Converting...",
+        "cancel": "Cancel",
+        "clear": "Clear All"
+    },
+    "file_list": {
+        "name": "File Name",
+        "path": "Path",
+        "status": "Status",
+        "pending": "Pending",
+        "processing": "Processing",
+        "success": "Success",
+        "failed": "Failed",
+        "remove": "Remove",
+        "no_files": "No files added"
+    },
+    "status": {
+        "ready": "Ready",
+        "processing": "Processing {current} of {total}...",
+        "complete": "Conversion complete! {success} succeeded, {failed} failed.",
+        "error": "Error: {message}"
+    },
+    "dialog": {
+        "select_files": "Select Markdown Files",
+        "select_folder": "Select Folder",
+        "select_output": "Select Output Directory",
+        "md_files": "Markdown Files",
+        "all_files": "All Files",
+        "confirm": "Confirm",
+        "cancel": "Cancel",
+        "yes": "Yes",
+        "no": "No",
+        "ok": "OK"
+    },
+    "messages": {
+        "no_files": "Please add at least one Markdown file.",
+        "invalid_output": "Please select a valid output directory.",
+        "confirm_clear": "Are you sure you want to clear all files?",
+        "conversion_success": "Successfully converted {count} file(s).",
+        "conversion_failed": "Conversion failed for {count} file(s). Check the log for details.",
+        "open_output": "Open Output Folder"
+    },
+    "about": {
+        "title": "About MarkPigeon",
+        "version": "Version {version}",
+        "description": "A powerful Markdown to HTML converter with smart asset management.",
+        "copyright": "© 2024 Steven Li. MIT License.",
+        "github": "View on GitHub"
+    },
+    "cli": {
+        "description": "MarkPigeon: Convert Markdown to beautiful, portable HTML",
+        "input_help": "Input Markdown file(s) or directory",
+        "output_help": "Output directory (default: same as input)",
+        "theme_help": "Theme name to use",
+        "zip_help": "Create individual ZIP for each file",
+        "batch_help": "Create single ZIP containing all outputs",
+        "recursive_help": "Process subdirectories recursively",
+        "list_themes_help": "List available themes and exit",
+        "lang_help": "Interface language (en, zh_CN)",
+        "version_help": "Show version and exit",
+        "verbose_help": "Enable verbose output"
+    }
+}

@@ -1,0 +1,91 @@
+{
+    "app": {
+        "title": "MarkPigeon",
+        "description": "Markdown 转 HTML 工具"
+    },
+    "menu": {
+        "file": "文件",
+        "edit": "编辑",
+        "view": "视图",
+        "help": "帮助",
+        "settings": "设置",
+        "language": "语言",
+        "about": "关于",
+        "exit": "退出"
+    },
+    "main": {
+        "drop_hint": "拖放 Markdown 文件到这里，或点击浏览",
+        "browse_files": "选择文件",
+        "browse_folder": "选择文件夹",
+        "output_dir": "输出目录",
+        "same_as_input": "与输入文件相同",
+        "choose_output": "选择...",
+        "theme": "主题",
+        "no_theme": "无主题（默认）",
+        "export_mode": "导出模式",
+        "mode_default": "HTML + 资源文件夹",
+        "mode_zip": "每个文件单独打包 ZIP",
+        "mode_batch": "全部打包为单个 ZIP",
+        "convert": "开始转换",
+        "converting": "转换中...",
+        "cancel": "取消",
+        "clear": "清空列表"
+    },
+    "file_list": {
+        "name": "文件名",
+        "path": "路径",
+        "status": "状态",
+        "pending": "等待中",
+        "processing": "处理中",
+        "success": "成功",
+        "failed": "失败",
+        "remove": "移除",
+        "no_files": "暂无文件"
+    },
+    "status": {
+        "ready": "就绪",
+        "processing": "正在处理 {current} / {total}...",
+        "complete": "转换完成！成功 {success} 个，失败 {failed} 个。",
+        "error": "错误：{message}"
+    },
+    "dialog": {
+        "select_files": "选择 Markdown 文件",
+        "select_folder": "选择文件夹",
+        "select_output": "选择输出目录",
+        "md_files": "Markdown 文件",
+        "all_files": "所有文件",
+        "confirm": "确认",
+        "cancel": "取消",
+        "yes": "是",
+        "no": "否",
+        "ok": "确定"
+    },
+    "messages": {
+        "no_files": "请至少添加一个 Markdown 文件。",
+        "invalid_output": "请选择有效的输出目录。",
+        "confirm_clear": "确定要清空所有文件吗？",
+        "conversion_success": "成功转换 {count} 个文件。",
+        "conversion_failed": "{count} 个文件转换失败，请查看日志了解详情。",
+        "open_output": "打开输出文件夹"
+    },
+    "about": {
+        "title": "关于 MarkPigeon",
+        "version": "版本 {version}",
+        "description": "一款功能强大的 Markdown 转 HTML 工具，支持智能资源管理。",
+        "copyright": "© 2024 Steven Li。MIT 许可证。",
+        "github": "在 GitHub 上查看"
+    },
+    "cli": {
+        "description": "MarkPigeon：将 Markdown 转换为精美、可移植的 HTML",
+        "input_help": "输入的 Markdown 文件或目录",
+        "output_help": "输出目录（默认：与输入相同）",
+        "theme_help": "使用的主题名称",
+        "zip_help": "为每个文件创建单独的 ZIP",
+        "batch_help": "将所有输出打包为单个 ZIP",
+        "recursive_help": "递归处理子目录",
+        "list_themes_help": "列出可用主题后退出",
+        "lang_help": "界面语言（en, zh_CN）",
+        "version_help": "显示版本信息后退出",
+        "verbose_help": "显示详细输出"
+    }
+}
