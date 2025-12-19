@@ -142,5 +142,32 @@
         "no_token": "Please configure your GitHub token in Settings first.",
         "multi_share_success": "Successfully published {count} files!",
         "published_files": "Published files:"
+    },
+    "pages_manager": {
+        "tab": "📄 Published Pages",
+        "title": "Your Published Pages",
+        "description": "Manage your documents published to GitHub Pages",
+        "filename": "Filename",
+        "url": "URL",
+        "actions": "Actions",
+        "copy": "Copy",
+        "delete": "Delete",
+        "refresh": "Refresh",
+        "loading": "Loading...",
+        "no_pages": "No pages published yet. Use 'Convert & Share' to publish your first document!",
+        "no_token": "Please configure your GitHub token in the Cloud tab first.",
+        "confirm_delete": "Delete this page?",
+        "confirm_delete_message": "Are you sure you want to delete '{filename}'? This will remove it from GitHub Pages and the link will no longer work.",
+        "deleted": "Page deleted successfully",
+        "delete_failed": "Failed to delete page",
+        "link_copied": "Link copied!"
+    },
+    "conflict": {
+        "title": "File Already Exists",
+        "message": "'{filename}' already exists on GitHub Pages. What would you like to do?",
+        "rename": "Rename (add suffix)",
+        "overwrite": "Overwrite",
+        "skip": "Skip",
+        "apply_to_all": "Apply to all conflicts"
     }
 }

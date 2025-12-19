@@ -112,6 +112,8 @@ class GitHubPublisher:
             # Try to get existing repo
             repo = self._user.get_repo(self.repo_name)
             logger.info(f"Found existing repo: {repo.full_name}")
+            # Ensure notifications are ignored
+            self._ignore_notifications(repo)
             return repo
         except GithubException as e:
             if e.status != 404:
@@ -133,9 +135,40 @@ class GitHubPublisher:
             # Wait a moment for repo initialization
             time.sleep(2)
 
+            # Automatically ignore notifications for this repo
+            self._ignore_notifications(repo)
+
             return repo
         except GithubException as e:
             raise PublishError(f"Failed to create repo: {e.data.get('message', str(e))}")
+
+    def _ignore_notifications(self, repo: Repository) -> bool:
+        """
+        Set repository subscription to ignore all notifications.
+
+        This prevents email spam from GitHub Actions builds.
+
+        Args:
+            repo: Repository object
+
+        Returns:
+            True if successful
+        """
+        try:
+            # PUT /repos/{owner}/{repo}/subscription with ignored=true
+            repo._requester.requestJsonAndCheck(
+                "PUT",
+                f"/repos/{repo.full_name}/subscription",
+                input={"subscribed": False, "ignored": True},
+            )
+            logger.info(f"Notifications ignored for {repo.full_name}")
+            return True
+        except GithubException as e:
+            logger.warning(f"Could not ignore notifications: {e}")
+            return False
+        except Exception as e:
+            logger.warning(f"Error ignoring notifications: {e}")
+            return False
 
     def enable_pages(self, repo: Repository) -> bool:
         """
@@ -148,15 +181,14 @@ class GitHubPublisher:
             True if successful
         """
         try:
-            # Try to enable Pages via raw API
-            # PyGithub doesn't have full Pages API support
+            # Try to enable Pages with branch deployment
             try:
                 repo._requester.requestJsonAndCheck(
                     "POST",
                     f"/repos/{repo.full_name}/pages",
                     input={"source": {"branch": "main", "path": "/"}},
                 )
-                logger.info("GitHub Pages enabled successfully")
+                logger.info("GitHub Pages enabled")
                 return True
             except GithubException as e:
                 # Check if Pages is already enabled (409 Conflict)
@@ -171,6 +203,7 @@ class GitHubPublisher:
         except Exception as e:
             logger.warning(f"Pages setup error: {e}")
             return False
+
 
     def upload_file(
         self,
@@ -297,6 +330,270 @@ class GitHubPublisher:
             )
         else:
             result.message = "No files were uploaded."
+
+        self._report_progress(100, 100, "Done!")
+        return result
+
+    def get_pages_url(self) -> str:
+        """
+        Get the base GitHub Pages URL for the repository.
+
+        Returns:
+            Base URL string
+        """
+        if not self._user:
+            success, msg = self.check_connection()
+            if not success:
+                return ""
+        return f"https://{self._user.login}.github.io/{self.repo_name}/"
+
+    def list_published_files(self) -> list[dict]:
+        """
+        List all HTML files published to the repository.
+
+        Returns:
+            List of dicts with 'name', 'path', 'url', 'sha' keys
+        """
+        if not self._github or not self._user:
+            success, msg = self.check_connection()
+            if not success:
+                return []
+
+        try:
+            repo = self.get_or_create_repo()
+            contents = repo.get_contents("")
+            
+            files = []
+            base_url = self.get_pages_url()
+            
+            for content in contents:
+                if content.type == "file" and content.name.endswith(".html"):
+                    files.append({
+                        "name": content.name,
+                        "path": content.path,
+                        "url": f"{base_url}{content.name}",
+                        "sha": content.sha,
+                    })
+            
+            return files
+        except GithubException as e:
+            logger.error(f"Failed to list files: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Error listing files: {e}")
+            return []
+
+    def check_file_exists(self, filename: str) -> tuple[bool, str | None]:
+        """
+        Check if a file already exists in the repository.
+
+        Args:
+            filename: Name of the file to check
+
+        Returns:
+            Tuple of (exists, sha) - sha is None if file doesn't exist
+        """
+        if not self._github or not self._user:
+            success, msg = self.check_connection()
+            if not success:
+                return False, None
+
+        try:
+            repo = self.get_or_create_repo()
+            content = repo.get_contents(filename)
+            return True, content.sha
+        except GithubException as e:
+            if e.status == 404:
+                return False, None
+            logger.error(f"Failed to check file: {e}")
+            return False, None
+        except Exception as e:
+            logger.error(f"Error checking file: {e}")
+            return False, None
+
+    def delete_file(self, filename: str) -> tuple[bool, str]:
+        """
+        Delete a file from the repository.
+
+        Args:
+            filename: Name of the file to delete
+
+        Returns:
+            Tuple of (success, message)
+        """
+        if not self._github or not self._user:
+            success, msg = self.check_connection()
+            if not success:
+                return False, msg
+
+        try:
+            repo = self.get_or_create_repo()
+            content = repo.get_contents(filename)
+            repo.delete_file(
+                path=filename,
+                message=f"Delete {filename} via MarkPigeon",
+                sha=content.sha,
+            )
+            logger.info(f"Deleted file: {filename}")
+            return True, f"Deleted {filename}"
+        except GithubException as e:
+            error_msg = f"Failed to delete: {e.data.get('message', str(e))}"
+            logger.error(error_msg)
+            return False, error_msg
+        except Exception as e:
+            error_msg = f"Error: {str(e)}"
+            logger.error(error_msg)
+            return False, error_msg
+
+    def publish_batch(
+        self,
+        files_to_publish: list[tuple[Path, Path | None]],
+    ) -> PublishResult:
+        """
+        Publish multiple HTML files and their assets in a single commit.
+
+        This method batches all uploads into one commit to avoid triggering
+        multiple GitHub Actions builds that conflict with each other.
+
+        Args:
+            files_to_publish: List of tuples (html_path, assets_dir)
+
+        Returns:
+            PublishResult with URLs and status
+        """
+        from github import InputGitTreeElement
+
+        result = PublishResult()
+
+        # Step 1: Validate connection
+        self._report_progress(0, 100, "Connecting to GitHub...")
+        success, msg = self.check_connection()
+        if not success:
+            result.message = msg
+            result.errors.append(msg)
+            return result
+
+        username = msg
+
+        # Step 2: Get or create repo
+        self._report_progress(10, 100, "Preparing repository...")
+        try:
+            repo = self.get_or_create_repo()
+        except PublishError as e:
+            result.message = str(e)
+            result.errors.append(str(e))
+            return result
+
+        # Step 3: Enable Pages
+        self._report_progress(15, 100, "Configuring GitHub Pages...")
+        self.enable_pages(repo)
+
+        # Step 4: Collect all files to upload
+        self._report_progress(20, 100, "Preparing files...")
+        all_files: list[tuple[Path, str]] = []  # (local_path, repo_path)
+
+        for html_path, assets_dir in files_to_publish:
+            html_name = html_path.name
+            all_files.append((html_path, html_name))
+
+            if assets_dir and assets_dir.exists():
+                assets_dir_name = assets_dir.name
+                for asset_file in assets_dir.iterdir():
+                    if asset_file.is_file():
+                        repo_path = f"{assets_dir_name}/{asset_file.name}"
+                        all_files.append((asset_file, repo_path))
+
+        if not all_files:
+            result.message = "No files to upload"
+            return result
+
+        # Step 5: Create tree elements for batch commit
+        self._report_progress(25, 100, "Creating commit...")
+        try:
+            # Get the current commit SHA
+            ref = repo.get_git_ref("heads/main")
+            base_tree = repo.get_git_tree(ref.object.sha)
+
+            tree_elements = []
+            total_files = len(all_files)
+
+            for i, (file_path, repo_path) in enumerate(all_files):
+                progress = 30 + int((i / total_files) * 50)
+                self._report_progress(progress, 100, f"Processing {file_path.name}...")
+
+                content = file_path.read_bytes()
+                
+                # Determine if file is binary (images, etc.) or text
+                # Use base64 for binary files, utf-8 for text files
+                binary_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.ico', '.bmp', '.svg', '.pdf', '.zip'}
+                file_ext = file_path.suffix.lower()
+                
+                if file_ext in binary_extensions:
+                    # Binary file - use base64 encoding
+                    import base64
+                    encoded_content = base64.b64encode(content).decode('ascii')
+                    blob = repo.create_git_blob(encoded_content, "base64")
+                else:
+                    # Text file - use utf-8 encoding
+                    try:
+                        text_content = content.decode("utf-8")
+                    except UnicodeDecodeError:
+                        # Fallback to base64 if not valid UTF-8
+                        import base64
+                        encoded_content = base64.b64encode(content).decode('ascii')
+                        blob = repo.create_git_blob(encoded_content, "base64")
+                    else:
+                        blob = repo.create_git_blob(text_content, "utf-8")
+                
+                tree_elements.append(
+                    InputGitTreeElement(
+                        path=repo_path,
+                        mode="100644",
+                        type="blob",
+                        sha=blob.sha,
+                    )
+                )
+                result.files_uploaded.append(repo_path)
+
+            # Create new tree
+            self._report_progress(85, 100, "Creating tree...")
+            new_tree = repo.create_git_tree(tree_elements, base_tree)
+
+            # Create commit
+            self._report_progress(90, 100, "Committing...")
+            parent = repo.get_git_commit(ref.object.sha)
+            commit_message = f"Update {len(files_to_publish)} file(s) via MarkPigeon"
+            new_commit = repo.create_git_commit(commit_message, new_tree, [parent])
+
+            # Update reference
+            self._report_progress(95, 100, "Pushing...")
+            ref.edit(new_commit.sha)
+
+            # Build result
+            result.success = True
+            
+            # Build URLs for HTML files only
+            html_files = [f for f in files_to_publish]
+            if len(html_files) == 1:
+                result.url = f"https://{username}.github.io/{self.repo_name}/{html_files[0][0].name}"
+            else:
+                # Return first URL but all files are uploaded
+                result.url = f"https://{username}.github.io/{self.repo_name}/"
+            
+            result.message = f"Published successfully! {len(result.files_uploaded)} file(s) uploaded in single commit."
+
+        except GithubException as e:
+            error_msg = f"Failed to create batch commit: {e.data.get('message', str(e))}"
+            logger.error(error_msg)
+            result.message = error_msg
+            result.errors.append(error_msg)
+            return result
+        except Exception as e:
+            error_msg = f"Error: {str(e)}"
+            logger.error(error_msg)
+            result.message = error_msg
+            result.errors.append(error_msg)
+            return result
 
         self._report_progress(100, 100, "Done!")
         return result

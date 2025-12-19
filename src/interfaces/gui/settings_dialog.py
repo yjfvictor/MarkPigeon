@@ -11,16 +11,20 @@ import webbrowser
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QDialog,
     QDialogButtonBox,
     QGroupBox,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QLineEdit,
     QMessageBox,
     QPushButton,
     QTabWidget,
+    QTableWidget,
+    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -63,6 +67,10 @@ class SettingsDialog(QDialog):
         # Cloud tab
         cloud_tab = self._create_cloud_tab()
         self.tabs.addTab(cloud_tab, t("settings.cloud_tab"))
+
+        # Published Pages tab
+        pages_tab = self._create_pages_tab()
+        self.tabs.addTab(pages_tab, t("pages_manager.tab"))
 
         layout.addWidget(self.tabs)
 
@@ -252,6 +260,167 @@ class SettingsDialog(QDialog):
         layout.addStretch()
 
         return tab
+
+    def _create_pages_tab(self) -> QWidget:
+        """Create the Published Pages management tab."""
+        from PySide6.QtCore import Qt
+
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setSpacing(16)
+
+        # Header with description
+        header_layout = QHBoxLayout()
+        title_label = QLabel(f"<b>{t('pages_manager.title')}</b>")
+        title_label.setStyleSheet("font-size: 14px;")
+        header_layout.addWidget(title_label)
+        header_layout.addStretch()
+
+        # Refresh button
+        self.refresh_pages_btn = QPushButton(f"🔄 {t('pages_manager.refresh')}")
+        self.refresh_pages_btn.clicked.connect(self._load_published_pages)
+        header_layout.addWidget(self.refresh_pages_btn)
+        layout.addLayout(header_layout)
+
+        # Description
+        desc_label = QLabel(t("pages_manager.description"))
+        desc_label.setObjectName("helpText")
+        layout.addWidget(desc_label)
+
+        # Table for published pages
+        self.pages_table = QTableWidget()
+        self.pages_table.setColumnCount(3)
+        self.pages_table.setHorizontalHeaderLabels([
+            t("pages_manager.filename"),
+            t("pages_manager.url"),
+            t("pages_manager.actions"),
+        ])
+        self.pages_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        self.pages_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.pages_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        self.pages_table.setAlternatingRowColors(True)
+        self.pages_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.pages_table.verticalHeader().setVisible(False)
+        layout.addWidget(self.pages_table)
+
+        # Status label for empty state or loading
+        self.pages_status = QLabel("")
+        self.pages_status.setObjectName("helpText")
+        self.pages_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.pages_status)
+
+        return tab
+
+    def _load_published_pages(self):
+        """Load the list of published pages from GitHub."""
+        from PySide6.QtCore import QCoreApplication, Qt
+
+        token = self.config.github_token
+        if not token:
+            self.pages_table.setRowCount(0)
+            self.pages_status.setText(t("pages_manager.no_token"))
+            return
+
+        self.refresh_pages_btn.setEnabled(False)
+        self.pages_status.setText(t("pages_manager.loading"))
+        QCoreApplication.processEvents()
+
+        try:
+            publisher = GitHubPublisher(token, self.config.github_repo_name or "markpigeon-shelf")
+            files = publisher.list_published_files()
+
+            self.pages_table.setRowCount(len(files))
+
+            if not files:
+                self.pages_status.setText(t("pages_manager.no_pages"))
+            else:
+                self.pages_status.setText("")
+
+            for row, file_info in enumerate(files):
+                # Filename
+                name_item = QTableWidgetItem(file_info["name"])
+                name_item.setFlags(name_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                self.pages_table.setItem(row, 0, name_item)
+
+                # URL  
+                url_item = QTableWidgetItem(file_info["url"])
+                url_item.setFlags(url_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                url_item.setToolTip(file_info["url"])
+                self.pages_table.setItem(row, 1, url_item)
+
+                # Action buttons
+                actions_widget = QWidget()
+                actions_layout = QHBoxLayout(actions_widget)
+                actions_layout.setContentsMargins(4, 2, 4, 2)
+                actions_layout.setSpacing(4)
+
+                copy_btn = QPushButton(t("pages_manager.copy"))
+                copy_btn.setProperty("url", file_info["url"])
+                copy_btn.clicked.connect(lambda checked, url=file_info["url"]: self._copy_page_url(url))
+                copy_btn.setMaximumWidth(60)
+
+                delete_btn = QPushButton(t("pages_manager.delete"))
+                delete_btn.setProperty("filename", file_info["name"])
+                delete_btn.clicked.connect(lambda checked, name=file_info["name"]: self._delete_page(name))
+                delete_btn.setMaximumWidth(60)
+                delete_btn.setStyleSheet("color: #dc3545;")
+
+                actions_layout.addWidget(copy_btn)
+                actions_layout.addWidget(delete_btn)
+                self.pages_table.setCellWidget(row, 2, actions_widget)
+
+        except Exception as e:
+            self.pages_status.setText(f"Error: {str(e)}")
+        finally:
+            self.refresh_pages_btn.setEnabled(True)
+
+    def _copy_page_url(self, url: str):
+        """Copy a page URL to clipboard."""
+        QApplication.clipboard().setText(url)
+        # Show brief feedback
+        self.pages_status.setText(f"✅ {t('pages_manager.link_copied')}")
+
+    def _delete_page(self, filename: str):
+        """Delete a published page."""
+        from PySide6.QtCore import QCoreApplication
+
+        # Confirm deletion
+        reply = QMessageBox.question(
+            self,
+            t("pages_manager.confirm_delete"),
+            t("pages_manager.confirm_delete_message", filename=filename),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        token = self.config.github_token
+        if not token:
+            return
+
+        self.pages_status.setText(t("pages_manager.loading"))
+        QCoreApplication.processEvents()
+
+        try:
+            publisher = GitHubPublisher(token, self.config.github_repo_name or "markpigeon-shelf")
+            success, message = publisher.delete_file(filename)
+
+            if success:
+                self.pages_status.setText(f"✅ {t('pages_manager.deleted')}")
+                self._load_published_pages()  # Refresh the list
+            else:
+                QMessageBox.warning(
+                    self,
+                    t("pages_manager.delete_failed"),
+                    message,
+                )
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                t("pages_manager.delete_failed"),
+                str(e),
+            )
 
     def _open_themes_folder(self, folder_path):
         """Open the themes folder in file explorer."""

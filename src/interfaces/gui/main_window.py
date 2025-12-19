@@ -549,10 +549,10 @@ class MainWindow(QMainWindow):
                 self.theme_selector.combo.setCurrentIndex(index)
 
     def _start_share(self):
-        """Start convert and share process for multiple files."""
+        """Start convert and share process for multiple files with batch commit."""
         import webbrowser
 
-        from PySide6.QtWidgets import QCheckBox
+        from PySide6.QtWidgets import QCheckBox, QButtonGroup, QRadioButton
 
         config = get_config()
 
@@ -613,11 +613,14 @@ class MainWindow(QMainWindow):
             config.github_token, config.github_repo_name, progress_callback=progress_cb
         )
 
-        # Process all files
+        # Convert all files first and check for conflicts
         theme = self.theme_selector.get_selected_theme()
-        published_urls = []
+        files_to_publish = []  # List of (html_path, assets_dir, original_name)
         errors = []
         total_files = len(files)
+        
+        # Track conflict handling preference for "apply to all"
+        conflict_action_all = None  # None, 'rename', 'overwrite', 'skip'
 
         for i, file_to_share in enumerate(files, 1):
             QCoreApplication.processEvents()
@@ -636,13 +639,54 @@ class MainWindow(QMainWindow):
                 errors.append(f"{file_to_share.name}: {result.error}")
                 continue
 
-            # Upload to GitHub
-            publish_result = publisher.publish(result.output_file, result.assets_dir)
+            # Check if file already exists
+            html_filename = result.output_file.name
+            exists, _ = publisher.check_file_exists(html_filename)
+            
+            if exists:
+                action = conflict_action_all
+                
+                if action is None:
+                    # Show conflict dialog
+                    action, apply_to_all = self._show_conflict_dialog(html_filename)
+                    
+                    if apply_to_all:
+                        conflict_action_all = action
+                
+                if action == 'skip':
+                    continue
+                elif action == 'rename':
+                    # Generate new filename with suffix
+                    new_filename = self._generate_unique_filename(publisher, html_filename)
+                    # Rename the file
+                    new_path = result.output_file.parent / new_filename
+                    result.output_file.rename(new_path)
+                    result.output_file = new_path
+                # 'overwrite' - just proceed, batch commit will overwrite
 
+            files_to_publish.append((result.output_file, result.assets_dir, file_to_share.name))
+
+        # Use batch publish to upload all files in a single commit
+        if files_to_publish:
+            self.progress_widget.set_status(self.i18n.t("cloud.sharing"))
+            QCoreApplication.processEvents()
+            
+            # Prepare files for batch publish
+            batch_files = [(html_path, assets_dir) for html_path, assets_dir, _ in files_to_publish]
+            publish_result = publisher.publish_batch(batch_files)
+            
             if publish_result.success:
-                published_urls.append((file_to_share.name, publish_result.url))
+                # Build URLs for each file
+                base_url = publisher.get_pages_url()
+                published_urls = [
+                    (original_name, f"{base_url}{html_path.name}")
+                    for html_path, _, original_name in files_to_publish
+                ]
             else:
-                errors.append(f"{file_to_share.name}: {publish_result.message}")
+                errors.append(publish_result.message)
+                published_urls = []
+        else:
+            published_urls = []
 
         self._reset_button_states()
 
@@ -698,6 +742,66 @@ class MainWindow(QMainWindow):
             # All failed
             error_msg = "\n".join(errors) if errors else "Unknown error"
             QMessageBox.critical(self, self.i18n.t("cloud.upload_failed"), error_msg)
+
+    def _show_conflict_dialog(self, filename: str) -> tuple[str, bool]:
+        """
+        Show a dialog for handling file conflicts.
+        
+        Returns:
+            Tuple of (action, apply_to_all) where action is 'rename', 'overwrite', or 'skip'
+        """
+        from PySide6.QtWidgets import QCheckBox, QDialogButtonBox
+        
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle(self.i18n.t("conflict.title"))
+        dialog.setText(self.i18n.t("conflict.message", filename=filename))
+        dialog.setIcon(QMessageBox.Icon.Question)
+        
+        # Add buttons
+        rename_btn = dialog.addButton(self.i18n.t("conflict.rename"), QMessageBox.ButtonRole.ActionRole)
+        overwrite_btn = dialog.addButton(self.i18n.t("conflict.overwrite"), QMessageBox.ButtonRole.ActionRole)
+        skip_btn = dialog.addButton(self.i18n.t("conflict.skip"), QMessageBox.ButtonRole.RejectRole)
+        
+        # Add checkbox for "apply to all"
+        apply_all_cb = QCheckBox(self.i18n.t("conflict.apply_to_all"))
+        dialog.setCheckBox(apply_all_cb)
+        
+        dialog.exec()
+        
+        clicked = dialog.clickedButton()
+        apply_to_all = apply_all_cb.isChecked()
+        
+        if clicked == rename_btn:
+            return 'rename', apply_to_all
+        elif clicked == overwrite_btn:
+            return 'overwrite', apply_to_all
+        else:
+            return 'skip', apply_to_all
+
+    def _generate_unique_filename(self, publisher, filename: str) -> str:
+        """Generate a unique filename by adding a numeric suffix."""
+        import re
+        
+        base, ext = filename.rsplit('.', 1) if '.' in filename else (filename, '')
+        
+        # Check for existing suffix pattern like _1, _2, etc.
+        match = re.match(r'^(.+)_(\d+)$', base)
+        if match:
+            base = match.group(1)
+            counter = int(match.group(2)) + 1
+        else:
+            counter = 1
+        
+        while True:
+            new_name = f"{base}_{counter}.{ext}" if ext else f"{base}_{counter}"
+            exists, _ = publisher.check_file_exists(new_name)
+            if not exists:
+                return new_name
+            counter += 1
+            if counter > 100:  # Safety limit
+                break
+        
+        return new_name
 
     def _reset_button_states(self):
         """Reset button states after share operation."""
