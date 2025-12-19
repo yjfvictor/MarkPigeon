@@ -145,7 +145,7 @@ class MainWindow(QMainWindow):
         # Middle: Theme selector
         self.theme_selector = ThemeSelector()
         themes = self.converter.get_available_themes()
-        self.theme_selector.set_themes(themes)
+        self.theme_selector.set_themes(themes, self.i18n.t("main.no_theme"))
 
         # Right: Export mode
         self.export_mode_selector = ExportModeSelector()
@@ -243,40 +243,34 @@ class MainWindow(QMainWindow):
         menubar = self.menuBar()
 
         # File menu
-        file_menu = menubar.addMenu("File")
+        self.file_menu = menubar.addMenu(self.i18n.t("menu.file"))
 
-        self.action_open = QAction("Open Files...", self)
+        self.action_open = QAction(self.i18n.t("dialog.select_files"), self)
         self.action_open.setShortcut("Ctrl+O")
-        file_menu.addAction(self.action_open)
+        self.file_menu.addAction(self.action_open)
 
-        self.action_open_folder = QAction("Open Folder...", self)
+        self.action_open_folder = QAction(self.i18n.t("dialog.select_folder"), self)
         self.action_open_folder.setShortcut("Ctrl+Shift+O")
-        file_menu.addAction(self.action_open_folder)
+        self.file_menu.addAction(self.action_open_folder)
 
-        file_menu.addSeparator()
+        self.file_menu.addSeparator()
 
-        self.action_settings = QAction("Settings...", self)
-        self.action_settings.setShortcut("Ctrl+,")
-        file_menu.addAction(self.action_settings)
-
-        file_menu.addSeparator()
-
-        self.action_exit = QAction("Exit", self)
+        self.action_exit = QAction(self.i18n.t("menu.exit"), self)
         self.action_exit.setShortcut("Ctrl+Q")
-        file_menu.addAction(self.action_exit)
+        self.file_menu.addAction(self.action_exit)
 
         # View menu
-        view_menu = menubar.addMenu("View")
+        self.view_menu = menubar.addMenu(self.i18n.t("menu.view"))
 
         # Language submenu
-        lang_menu = view_menu.addMenu("Language")
+        self.lang_menu = self.view_menu.addMenu(self.i18n.t("menu.language"))
         self.action_lang_en = QAction("English", self)
         self.action_lang_en.setCheckable(True)
         self.action_lang_zh = QAction("简体中文", self)
         self.action_lang_zh.setCheckable(True)
 
-        lang_menu.addAction(self.action_lang_en)
-        lang_menu.addAction(self.action_lang_zh)
+        self.lang_menu.addAction(self.action_lang_en)
+        self.lang_menu.addAction(self.action_lang_zh)
 
         # Set current language checked
         if self.i18n.current_locale == "en":
@@ -284,11 +278,16 @@ class MainWindow(QMainWindow):
         else:
             self.action_lang_zh.setChecked(True)
 
-        # Help menu
-        help_menu = menubar.addMenu("Help")
+        # Settings menu (standalone)
+        self.action_settings = QAction(self.i18n.t("menu.settings"), self)
+        self.action_settings.setShortcut("Ctrl+,")
+        menubar.addAction(self.action_settings)
 
-        self.action_about = QAction("About", self)
-        help_menu.addAction(self.action_about)
+        # Help menu
+        self.help_menu = menubar.addMenu(self.i18n.t("menu.help"))
+
+        self.action_about = QAction(self.i18n.t("menu.about"), self)
+        self.help_menu.addAction(self.action_about)
 
     def _connect_signals(self):
         """Connect signals and slots."""
@@ -325,15 +324,32 @@ class MainWindow(QMainWindow):
         self.output_label.setText(t("main.output_dir") + ":")
         self.output_display.setText(t("main.same_as_input"))
         self.output_choose_btn.setText(t("main.choose_output"))
-        self.output_reset_btn.setText("Reset")
+        self.output_reset_btn.setText(t("main.reset"))
         self.theme_selector.set_label_text(t("main.theme") + ":")
         self.export_mode_selector.setTitle(t("main.export_mode"))
         self.export_mode_selector.set_mode_texts(
             t("main.mode_default"), t("main.mode_zip"), t("main.mode_batch")
         )
-        self.convert_btn.setText(self.i18n.t("main.convert"))
-        self.share_btn.setText(self.i18n.t("cloud.convert_and_share"))
+        self.convert_btn.setText(t("main.convert"))
+        self.convert_btn.setToolTip(t("main.convert_tooltip"))
+        self.share_btn.setText(t("cloud.convert_and_share"))
+        self.share_btn.setToolTip(t("main.share_tooltip"))
         self.progress_widget.set_status(t("status.ready"))
+
+        # Update file list header
+        self.file_list.set_header_text(t("file_list.files") + " ({count})")
+        self.file_list.set_clear_text(t("main.clear"))
+
+        # Update menu items
+        self.file_menu.setTitle(t("menu.file"))
+        self.action_open.setText(t("dialog.select_files"))
+        self.action_open_folder.setText(t("dialog.select_folder"))
+        self.action_exit.setText(t("menu.exit"))
+        self.view_menu.setTitle(t("menu.view"))
+        self.lang_menu.setTitle(t("menu.language"))
+        self.action_settings.setText(t("menu.settings"))
+        self.help_menu.setTitle(t("menu.help"))
+        self.action_about.setText(t("menu.about"))
 
     @Slot(list)
     def _on_files_dropped(self, files: list[Path]):
@@ -516,10 +532,24 @@ class MainWindow(QMainWindow):
         """Show settings dialog."""
         dialog = SettingsDialog(self)
         dialog.settings_changed.connect(self._apply_translations)
+        dialog.settings_changed.connect(self._refresh_themes)
         dialog.exec()
+        # Also refresh themes after dialog closes (in case user added new themes)
+        self._refresh_themes()
+
+    def _refresh_themes(self):
+        """Refresh the theme list from disk."""
+        current_theme = self.theme_selector.get_selected_theme()
+        themes = self.converter.get_available_themes()
+        self.theme_selector.set_themes(themes, self.i18n.t("main.no_theme"))
+        # Try to restore selection
+        if current_theme:
+            index = self.theme_selector.combo.findData(current_theme)
+            if index >= 0:
+                self.theme_selector.combo.setCurrentIndex(index)
 
     def _start_share(self):
-        """Start convert and share process."""
+        """Start convert and share process for multiple files."""
         import webbrowser
 
         from PySide6.QtWidgets import QCheckBox
@@ -561,61 +591,85 @@ class MainWindow(QMainWindow):
                 config.privacy_warning_enabled = False
                 save_config()
 
-        # Start conversion first
+        # Get all files
         files = self.file_list.get_files()
         if not files:
             QMessageBox.warning(self, "Warning", self.i18n.t("messages.no_files"))
             return
-
-        # For now, just convert the first file for sharing
-        file_to_share = files[0]
 
         # Disable buttons
         self.convert_btn.setEnabled(False)
         self.share_btn.setEnabled(False)
         self.share_btn.setText(self.i18n.t("cloud.sharing"))
 
-        # Convert file
-        output_dir = self.output_dir or file_to_share.parent
-        theme = self.theme_selector.get_selected_theme()
-
         from PySide6.QtCore import QCoreApplication
 
-        QCoreApplication.processEvents()
-
-        result = self.converter.convert_file(file_to_share, output_dir, theme)
-
-        if not result.success:
-            QMessageBox.critical(
-                self, self.i18n.t("cloud.upload_failed"), result.error or "Unknown error"
-            )
-            self._reset_button_states()
-            return
-
-        # Now upload to GitHub
-        self.progress_widget.set_status(self.i18n.t("cloud.sharing"))
-
-        def progress_cb(curr, total, msg):
-            self.progress_widget.set_progress(curr, total, msg)
+        # Create publisher
+        def progress_cb(curr, total, msg_text):
+            self.progress_widget.set_progress(curr, total, msg_text)
             QCoreApplication.processEvents()
 
         publisher = GitHubPublisher(
             config.github_token, config.github_repo_name, progress_callback=progress_cb
         )
 
-        publish_result = publisher.publish(result.output_file, result.assets_dir)
+        # Process all files
+        theme = self.theme_selector.get_selected_theme()
+        published_urls = []
+        errors = []
+        total_files = len(files)
+
+        for i, file_to_share in enumerate(files, 1):
+            QCoreApplication.processEvents()
+            
+            # Update progress
+            self.progress_widget.set_status(
+                f"{self.i18n.t('cloud.sharing')} ({i}/{total_files}): {file_to_share.name}"
+            )
+            QCoreApplication.processEvents()
+
+            # Convert file
+            output_dir = self.output_dir or file_to_share.parent
+            result = self.converter.convert_file(file_to_share, output_dir, theme)
+
+            if not result.success:
+                errors.append(f"{file_to_share.name}: {result.error}")
+                continue
+
+            # Upload to GitHub
+            publish_result = publisher.publish(result.output_file, result.assets_dir)
+
+            if publish_result.success:
+                published_urls.append((file_to_share.name, publish_result.url))
+            else:
+                errors.append(f"{file_to_share.name}: {publish_result.message}")
 
         self._reset_button_states()
 
-        if publish_result.success:
-            # Show success dialog
+        # Show results
+        if published_urls:
+            # Build success message
+            url_list = "\n".join([f"• {name}: {url}" for name, url in published_urls])
+            
+            if len(published_urls) == 1:
+                msg_text = (
+                    f"{self.i18n.t('cloud.success_message')}\n\n"
+                    f"{self.i18n.t('cloud.public_link')}\n{published_urls[0][1]}\n\n"
+                    f"{self.i18n.t('cloud.first_time_hint')}"
+                )
+            else:
+                msg_text = (
+                    f"{self.i18n.t('cloud.multi_share_success', count=len(published_urls))}\n\n"
+                    f"{self.i18n.t('cloud.published_files')}\n{url_list}\n\n"
+                    f"{self.i18n.t('cloud.first_time_hint')}"
+                )
+            
+            if errors:
+                msg_text += f"\n\n⚠️ {len(errors)} file(s) failed:\n" + "\n".join(errors)
+
             msg = QMessageBox(self)
             msg.setWindowTitle(self.i18n.t("cloud.success_title"))
-            msg.setText(
-                f"{self.i18n.t('cloud.success_message')}\n\n"
-                f"{self.i18n.t('cloud.public_link')}\n{publish_result.url}\n\n"
-                f"{self.i18n.t('cloud.first_time_hint')}"
-            )
+            msg.setText(msg_text)
             msg.setIcon(QMessageBox.Icon.Information)
 
             copy_btn = msg.addButton(
@@ -628,13 +682,22 @@ class MainWindow(QMainWindow):
 
             msg.exec()
 
+            # Copy all URLs or first URL
             if msg.clickedButton() == copy_btn:
-                QApplication.clipboard().setText(publish_result.url)
+                if len(published_urls) == 1:
+                    QApplication.clipboard().setText(published_urls[0][1])
+                else:
+                    all_urls = "\n".join([f"{name}: {url}" for name, url in published_urls])
+                    QApplication.clipboard().setText(all_urls)
                 self.status_bar.showMessage(self.i18n.t("cloud.link_copied"))
             elif msg.clickedButton() == open_btn:
-                webbrowser.open(publish_result.url)
+                # Open all URLs in browser
+                for _, url in published_urls:
+                    webbrowser.open(url)
         else:
-            QMessageBox.critical(self, self.i18n.t("cloud.upload_failed"), publish_result.message)
+            # All failed
+            error_msg = "\n".join(errors) if errors else "Unknown error"
+            QMessageBox.critical(self, self.i18n.t("cloud.upload_failed"), error_msg)
 
     def _reset_button_states(self):
         """Reset button states after share operation."""
@@ -646,14 +709,37 @@ class MainWindow(QMainWindow):
 
 def run_gui():
     """Run the GUI application."""
+    from PySide6.QtGui import QIcon
+
     app = QApplication(sys.argv)
     app.setApplicationName("MarkPigeon")
     app.setApplicationVersion(__version__)
+
+    # Set application icon
+    icon_path = _get_icon_path()
+    if icon_path and icon_path.exists():
+        app.setWindowIcon(QIcon(str(icon_path)))
 
     window = MainWindow()
     window.show()
 
     sys.exit(app.exec())
+
+
+def _get_icon_path():
+    """Get the path to the application icon."""
+    from pathlib import Path
+
+    # Check if running as frozen executable
+    if getattr(sys, 'frozen', False):
+        # Running as compiled
+        base_path = Path(sys.executable).parent
+    else:
+        # Running as script - navigate from src/interfaces/gui/ to project root
+        base_path = Path(__file__).parent.parent.parent.parent
+
+    icon_path = base_path / "assets" / "icon.png"
+    return icon_path if icon_path.exists() else None
 
 
 if __name__ == "__main__":

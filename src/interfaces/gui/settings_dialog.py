@@ -4,6 +4,9 @@ MarkPigeon Settings Dialog
 Settings dialog for configuring GitHub integration and app preferences.
 """
 
+import os
+import subprocess
+import sys
 import webbrowser
 
 from PySide6.QtCore import Signal
@@ -22,7 +25,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ...core.config import get_config, save_config
+from ...core.config import get_config, get_themes_dir, save_config
 from ...core.i18n import t
 from ...core.publisher import MARKPIGEON_REPO, GitHubPublisher
 
@@ -52,6 +55,10 @@ class SettingsDialog(QDialog):
 
         # Tab widget
         self.tabs = QTabWidget()
+
+        # Themes tab
+        themes_tab = self._create_themes_tab()
+        self.tabs.addTab(themes_tab, t("settings.themes_tab"))
 
         # Cloud tab
         cloud_tab = self._create_cloud_tab()
@@ -173,6 +180,92 @@ class SettingsDialog(QDialog):
         layout.addStretch()
 
         return tab
+
+    def _create_themes_tab(self) -> QWidget:
+        """Create the Themes settings tab."""
+        from pathlib import Path
+
+        from ...core.converter import Converter
+
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setSpacing(16)
+
+        # User Themes Group
+        user_themes_group = QGroupBox(t("settings.themes_user"))
+        user_themes_layout = QVBoxLayout(user_themes_group)
+
+        # User themes location
+        user_themes_dir = get_themes_dir()
+        location_label = QLabel(f"📁 {user_themes_dir}")
+        location_label.setObjectName("helpText")
+        location_label.setWordWrap(True)
+        user_themes_layout.addWidget(location_label)
+
+        # Open folder button
+        open_folder_btn = QPushButton(t("settings.open_themes_folder"))
+        open_folder_btn.clicked.connect(lambda: self._open_themes_folder(user_themes_dir))
+        user_themes_layout.addWidget(open_folder_btn)
+
+        # Help text
+        help_label = QLabel(t("settings.themes_help"))
+        help_label.setObjectName("helpText")
+        help_label.setWordWrap(True)
+        user_themes_layout.addWidget(help_label)
+
+        # User theme list
+        user_themes = []
+        if user_themes_dir.exists():
+            user_themes = [f.stem for f in user_themes_dir.glob("*.css")]
+
+        if user_themes:
+            themes_list = QLabel("• " + "\n• ".join(sorted(user_themes)))
+            themes_list.setObjectName("themesList")
+        else:
+            themes_list = QLabel(t("settings.no_user_themes"))
+            themes_list.setObjectName("helpText")
+        user_themes_layout.addWidget(themes_list)
+
+        layout.addWidget(user_themes_group)
+
+        # Bundled Themes Group
+        bundled_group = QGroupBox(t("settings.themes_bundled"))
+        bundled_layout = QVBoxLayout(bundled_group)
+
+        # Get bundled themes (from project_root/themes/)
+        # Path: src/interfaces/gui/settings_dialog.py -> project_root
+        bundled_dir = Path(__file__).parent.parent.parent.parent / "themes"
+        bundled_themes = []
+        if bundled_dir.exists():
+            bundled_themes = [f.stem for f in bundled_dir.glob("*.css")]
+
+        if bundled_themes:
+            bundled_list = QLabel("• " + "\n• ".join(sorted(bundled_themes)))
+            bundled_list.setObjectName("themesList")
+        else:
+            bundled_list = QLabel("No bundled themes found")
+            bundled_list.setObjectName("helpText")
+        bundled_layout.addWidget(bundled_list)
+
+        layout.addWidget(bundled_group)
+
+        layout.addStretch()
+
+        return tab
+
+    def _open_themes_folder(self, folder_path):
+        """Open the themes folder in file explorer."""
+        from pathlib import Path
+
+        folder_path = Path(folder_path)
+        folder_path.mkdir(parents=True, exist_ok=True)
+
+        if sys.platform == "win32":
+            os.startfile(str(folder_path))
+        elif sys.platform == "darwin":
+            subprocess.run(["open", str(folder_path)])
+        else:
+            subprocess.run(["xdg-open", str(folder_path)])
 
     def _apply_styles(self):
         """Apply styles to the dialog."""

@@ -21,17 +21,21 @@
         "same_as_input": "与输入文件相同",
         "choose_output": "选择...",
         "theme": "主题",
-        "no_theme": "无主题（默认）",
+        "no_theme": "GitHub（默认）",
         "export_mode": "导出模式",
         "mode_default": "HTML + 资源文件夹",
         "mode_zip": "每个文件单独打包 ZIP",
         "mode_batch": "全部打包为单个 ZIP",
         "convert": "开始转换",
+        "convert_tooltip": "将选中的 Markdown 文件转换为 HTML（使用所选主题）",
+        "share_tooltip": "转换并上传到 GitHub Pages 进行公开分享",
         "converting": "转换中...",
         "cancel": "取消",
-        "clear": "清空列表"
+        "clear": "清空列表",
+        "reset": "重置"
     },
     "file_list": {
+        "files": "文件",
         "name": "文件名",
         "path": "路径",
         "status": "状态",
@@ -111,7 +115,13 @@
         "starring": "正在 Star...",
         "already_starred": "💖 感谢你的支持！",
         "error": "错误",
-        "token_required_for_star": "请先输入 GitHub Token 才能点 Star。"
+        "token_required_for_star": "请先输入 GitHub Token 才能点 Star。",
+        "themes_tab": "🎨 主题",
+        "themes_bundled": "内置主题",
+        "themes_user": "用户主题",
+        "open_themes_folder": "打开主题文件夹",
+        "themes_help": "将 .css 文件放入主题文件夹即可添加自定义主题。用户主题优先于内置主题。",
+        "no_user_themes": "暂无用户主题"
     },
     "cloud": {
         "convert_and_share": "转换并分享",
@@ -129,6 +139,8 @@
         "link_copied": "链接已复制到剪贴板！",
         "first_time_hint": "提示：如果是首次上传，链接可能需要 1-2 分钟才能生效。",
         "upload_failed": "上传失败",
-        "no_token": "请先在设置中配置 GitHub Token。"
+        "no_token": "请先在设置中配置 GitHub Token。",
+        "multi_share_success": "成功发布 {count} 个文件！",
+        "published_files": "已发布文件："
     }
 }

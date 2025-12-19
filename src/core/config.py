@@ -25,6 +25,17 @@ def get_config_file() -> Path:
     return get_config_dir() / "config.json"
 
 
+def get_themes_dir() -> Path:
+    """Get the user themes directory path.
+
+    Creates the directory if it doesn't exist.
+    Returns ~/.markpigeon/themes/
+    """
+    themes_dir = get_config_dir() / "themes"
+    themes_dir.mkdir(parents=True, exist_ok=True)
+    return themes_dir
+
+
 @dataclass
 class AppConfig:
     """Application configuration."""
