@@ -29,6 +29,7 @@ class ExportMode:
     DEFAULT = "default"  # Mode A: .html + assets_xxx folder
     INDIVIDUAL_ZIP = "zip"  # Mode B: Each MD -> individual .zip
     BATCH_ZIP = "batch"  # Mode C: All results -> single .zip
+    STANDALONE = "standalone"  # Mode D: Single HTML file with embedded assets (base64)
 
 
 class ZipPacker:

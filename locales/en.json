@@ -26,6 +26,7 @@
         "mode_default": "HTML + Assets Folder",
         "mode_zip": "Individual ZIP per File",
         "mode_batch": "Single Batch ZIP",
+        "mode_standalone": "Standalone HTML file",
         "convert": "Convert",
         "convert_tooltip": "Convert selected Markdown files to HTML with chosen theme",
         "share_tooltip": "Convert and upload to GitHub Pages for public sharing",
