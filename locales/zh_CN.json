@@ -26,7 +26,7 @@
         "mode_default": "HTML + 资源文件夹",
         "mode_zip": "每个文件单独打包 ZIP",
         "mode_batch": "全部打包为单个 ZIP",
-        "mode_standalone": "独立 HTML 文件",
+        "mode_standalone": "Base64 编码资源后转换为独立 HTML 文件",
         "convert": "开始转换",
         "convert_tooltip": "将选中的 Markdown 文件转换为 HTML（使用所选主题）",
         "share_tooltip": "转换并上传到 GitHub Pages 进行公开分享",
