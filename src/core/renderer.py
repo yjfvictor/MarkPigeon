@@ -4,7 +4,9 @@ MarkPigeon HTML Renderer Module
 Renders HTML with theme injection and smart asset isolation.
 """
 
+import base64
 import hashlib
+import io
 import logging
 import shutil
 from dataclasses import dataclass, field
@@ -158,6 +160,7 @@ a:hover { text-decoration: underline; }
         theme_name: str | None = None,
         title: str | None = None,
         lang: str = "en",
+        standalone: bool = False,
     ) -> RenderResult:
         """
         Render parsed Markdown to a complete HTML file with assets.
@@ -168,6 +171,7 @@ a:hover { text-decoration: underline; }
             theme_name: Optional theme name to use
             title: Optional document title (defaults to filename)
             lang: HTML lang attribute
+            standalone: If True, embed all images as base64 data URLs (no assets folder)
 
         Returns:
             RenderResult with output information.
@@ -184,26 +188,32 @@ a:hover { text-decoration: underline; }
         # Create output directory
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Create assets directory
-        assets_dir_name = f"assets_{base_name}"
-        assets_dir = output_dir / assets_dir_name
-
         # Process images and create path mapping
         path_mapping: dict[str, str] = {}
 
         if parse_result.local_images:
-            assets_dir.mkdir(parents=True, exist_ok=True)
-            result.assets_dir = assets_dir
+            if standalone:
+                # Standalone mode: embed images as base64 data URLs
+                for img_info in parse_result.local_images:
+                    data_url = self._process_image_standalone(img_info, result)
+                    if data_url:
+                        path_mapping[img_info.original_src] = data_url
+            else:
+                # Normal mode: copy images to assets folder
+                assets_dir_name = f"assets_{base_name}"
+                assets_dir = output_dir / assets_dir_name
+                assets_dir.mkdir(parents=True, exist_ok=True)
+                result.assets_dir = assets_dir
 
-            # Track used filenames to handle conflicts
-            used_names: dict[str, int] = {}
+                # Track used filenames to handle conflicts
+                used_names: dict[str, int] = {}
 
-            for img_info in parse_result.local_images:
-                new_path = self._process_image(
-                    img_info, assets_dir, assets_dir_name, used_names, result
-                )
-                if new_path:
-                    path_mapping[img_info.original_src] = new_path
+                for img_info in parse_result.local_images:
+                    new_path = self._process_image(
+                        img_info, assets_dir, assets_dir_name, used_names, result
+                    )
+                    if new_path:
+                        path_mapping[img_info.original_src] = new_path
 
         # Update HTML with new image paths
         html_content = parse_result.html
@@ -384,9 +394,130 @@ a:hover { text-decoration: underline; }
         used_names[filename] += 1
         return f"{stem}_{file_hash}{suffix}"
 
+    def _process_image_standalone(self, img_info: ImageInfo, result: RenderResult) -> str | None:
+        """
+        Process a single image for standalone mode: convert to base64 data URL.
+
+        Args:
+            img_info: Image information
+            result: RenderResult to update
+
+        Returns:
+            Data URL string (e.g., "data:image/png;base64,...") or None on failure.
+        """
+        if img_info.exists and img_info.local_path:
+            # Convert existing image to base64
+            return self._image_to_data_url(img_info.local_path, result)
+        else:
+            # Generate placeholder and convert to base64
+            return self._placeholder_to_data_url(img_info, result)
+
+    def _image_to_data_url(self, image_path: Path, result: RenderResult) -> str | None:
+        """
+        Convert an image file to a base64 data URL.
+
+        Args:
+            image_path: Path to the image file
+            result: RenderResult to update
+
+        Returns:
+            Data URL string or None on failure.
+        """
+        try:
+            # Read image file
+            image_data = image_path.read_bytes()
+
+            # Determine MIME type from extension
+            suffix = image_path.suffix.lower()
+            mime_types = {
+                ".png": "image/png",
+                ".jpg": "image/jpeg",
+                ".jpeg": "image/jpeg",
+                ".gif": "image/gif",
+                ".webp": "image/webp",
+                ".svg": "image/svg+xml",
+                ".bmp": "image/bmp",
+                ".ico": "image/x-icon",
+            }
+            mime_type = mime_types.get(suffix, "image/png")
+
+            # Encode to base64
+            base64_data = base64.b64encode(image_data).decode("ascii")
+
+            # Create data URL
+            data_url = f"data:{mime_type};base64,{base64_data}"
+
+            logger.debug(f"Converted image to data URL: {image_path}")
+            return data_url
+
+        except Exception as e:
+            result.warnings.append(f"Failed to convert image {image_path} to data URL: {e}")
+            logger.error(f"Failed to convert image to data URL: {e}")
+            return None
+
+    def _placeholder_to_data_url(self, img_info: ImageInfo, result: RenderResult) -> str | None:
+        """
+        Generate a placeholder image and convert it to a base64 data URL.
+
+        Args:
+            img_info: Image information
+            result: RenderResult to update
+
+        Returns:
+            Data URL string or None on failure.
+        """
+        try:
+            # Create a simple placeholder image
+            width, height = 400, 300
+            img = Image.new("RGB", (width, height), color=(240, 240, 240))
+            draw = ImageDraw.Draw(img)
+
+            # Draw border
+            draw.rectangle([0, 0, width - 1, height - 1], outline=(200, 200, 200), width=2)
+
+            # Draw X
+            draw.line([(50, 50), (width - 50, height - 50)], fill=(180, 180, 180), width=2)
+            draw.line([(width - 50, 50), (50, height - 50)], fill=(180, 180, 180), width=2)
+
+            # Draw text
+            text = "Image Not Found"
+            try:
+                font = ImageFont.load_default()
+            except Exception:
+                font = None
+
+            # Get text bounding box
+            bbox = draw.textbbox((0, 0), text, font=font) if font else (0, 0, 100, 20)
+            text_width = bbox[2] - bbox[0]
+
+            x = (width - text_width) // 2
+            y = height - 50
+            draw.text((x, y), text, fill=(150, 150, 150), font=font)
+
+            # Save to BytesIO buffer
+            buffer = io.BytesIO()
+            img.save(buffer, format="PNG")
+            buffer.seek(0)
+
+            # Convert to base64
+            image_data = buffer.getvalue()
+            base64_data = base64.b64encode(image_data).decode("ascii")
+            data_url = f"data:image/png;base64,{base64_data}"
+
+            logger.info(f"Generated placeholder data URL for: {img_info.original_src}")
+            return data_url
+
+        except Exception as e:
+            result.warnings.append(f"Failed to generate placeholder data URL: {e}")
+            logger.error(f"Failed to generate placeholder data URL: {e}")
+            return None
+
 
 def render_to_html(
-    parse_result: ParseResult, output_dir: Path, theme_name: str | None = None
+    parse_result: ParseResult,
+    output_dir: Path,
+    theme_name: str | None = None,
+    standalone: bool = False,
 ) -> RenderResult:
     """
     Convenience function to render parsed Markdown to HTML.
@@ -395,9 +526,10 @@ def render_to_html(
         parse_result: Result from MarkdownParser
         output_dir: Output directory
         theme_name: Optional theme name
+        standalone: If True, embed images as base64 data URLs
 
     Returns:
         RenderResult object.
     """
     renderer = HtmlRenderer()
-    return renderer.render(parse_result, output_dir, theme_name)
+    return renderer.render(parse_result, output_dir, theme_name, standalone=standalone)

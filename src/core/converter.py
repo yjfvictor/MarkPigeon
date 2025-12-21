@@ -161,7 +161,10 @@ class Converter:
 
             # Step 2: Render HTML with assets
             logger.info(f"Rendering: {input_file.name}")
-            render_result = self.renderer.render(parse_result, output_dir, theme_name=theme)
+            standalone = export_mode == ExportMode.STANDALONE
+            render_result = self.renderer.render(
+                parse_result, output_dir, theme_name=theme, standalone=standalone
+            )
 
             result.output_file = render_result.output_file
             result.assets_dir = render_result.assets_dir
@@ -172,7 +175,7 @@ class Converter:
                 result.error = "Failed to render HTML"
                 return result
 
-            # Step 3: Pack to ZIP if requested
+            # Step 3: Pack to ZIP if requested (skip for standalone mode)
             if export_mode == ExportMode.INDIVIDUAL_ZIP:
                 packer = ZipPacker(output_dir)
                 pack_result = packer.pack_individual(
@@ -232,9 +235,13 @@ class Converter:
             self._report_progress(i + 1, len(input_files), f"Converting: {input_file.name}")
 
             # For batch mode, don't zip individual files
-            file_export_mode = (
-                ExportMode.DEFAULT if export_mode == ExportMode.BATCH_ZIP else export_mode
-            )
+            # For standalone mode, process as standalone (no assets folder, no ZIP)
+            if export_mode == ExportMode.BATCH_ZIP:
+                file_export_mode = ExportMode.DEFAULT
+            elif export_mode == ExportMode.STANDALONE:
+                file_export_mode = ExportMode.STANDALONE
+            else:
+                file_export_mode = export_mode
 
             result = self.convert_file(
                 input_file,
@@ -253,7 +260,7 @@ class Converter:
             else:
                 batch_result.failed += 1
 
-        # Create batch ZIP if requested
+        # Create batch ZIP if requested (skip for standalone mode)
         if export_mode == ExportMode.BATCH_ZIP and zip_items:
             self._report_progress(len(input_files), len(input_files), "Creating batch ZIP...")
             packer = ZipPacker(output_dir)

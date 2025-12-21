@@ -328,7 +328,10 @@ class MainWindow(QMainWindow):
         self.theme_selector.set_label_text(t("main.theme") + ":")
         self.export_mode_selector.setTitle(t("main.export_mode"))
         self.export_mode_selector.set_mode_texts(
-            t("main.mode_default"), t("main.mode_zip"), t("main.mode_batch")
+            t("main.mode_default"),
+            t("main.mode_zip"),
+            t("main.mode_batch"),
+            t("main.mode_standalone"),
         )
         self.convert_btn.setText(t("main.convert"))
         self.convert_btn.setToolTip(t("main.convert_tooltip"))
@@ -455,6 +458,7 @@ class MainWindow(QMainWindow):
             "default": ExportMode.DEFAULT,
             "zip": ExportMode.INDIVIDUAL_ZIP,
             "batch": ExportMode.BATCH_ZIP,
+            "standalone": ExportMode.STANDALONE,
         }
         export_mode = mode_map.get(export_mode, ExportMode.DEFAULT)
 

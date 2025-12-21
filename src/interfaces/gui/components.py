@@ -441,27 +441,33 @@ class ExportModeSelector(QGroupBox):
         self.mode_batch = QRadioButton("Single Batch ZIP")
         self.button_group.addButton(self.mode_batch, 2)
 
+        self.mode_standalone = QRadioButton("Standalone HTML file")
+        self.button_group.addButton(self.mode_standalone, 3)
+
         layout.addWidget(self.mode_default)
         layout.addWidget(self.mode_zip)
         layout.addWidget(self.mode_batch)
+        layout.addWidget(self.mode_standalone)
 
         self.button_group.idClicked.connect(self._on_mode_changed)
 
     def get_mode(self) -> str:
         """Get the selected export mode."""
         checked_id = self.button_group.checkedId()
-        modes = ["default", "zip", "batch"]
+        modes = ["default", "zip", "batch", "standalone"]
         return modes[checked_id] if 0 <= checked_id < len(modes) else "default"
 
     def _on_mode_changed(self, id: int):
         """Handle mode change."""
         self.mode_changed.emit(self.get_mode())
 
-    def set_mode_texts(self, default: str, zip_mode: str, batch: str):
+    def set_mode_texts(self, default: str, zip_mode: str, batch: str, standalone: str = ""):
         """Set the mode radio button texts."""
         self.mode_default.setText(default)
         self.mode_zip.setText(zip_mode)
         self.mode_batch.setText(batch)
+        if standalone:
+            self.mode_standalone.setText(standalone)
 
 
 class ProgressWidget(QWidget):
