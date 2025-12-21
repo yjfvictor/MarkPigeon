@@ -256,7 +256,7 @@ class Converter:
             if result.success:
                 batch_result.successful += 1
                 # Only collect items for batch ZIP (not for standalone mode)
-                if export_mode == ExportMode.BATCH_ZIP and result.assets_dir:
+                if export_mode == ExportMode.BATCH_ZIP:
                     zip_items.append((result.output_file, result.assets_dir))
             else:
                 batch_result.failed += 1
